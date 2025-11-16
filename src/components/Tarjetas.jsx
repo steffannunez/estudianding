@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import { useStudy } from '../context/StudyContext'
 
 export default function Tarjetas() {
   const { state, setMode, nextCard, prevCard, toggleAnswer, markCardKnown } = useStudy()
   const { currentTopic, knowledgeBase, currentCardIndex, showAnswer } = state
+  const [allCardsCompleted, setAllCardsCompleted] = useState(false)
 
   if (!currentTopic) {
     return <div>No hay tema seleccionado</div>
@@ -22,12 +24,16 @@ export default function Tarjetas() {
     markCardKnown()
     if (currentCardIndex < conceptos.length - 1) {
       nextCard()
+    } else {
+      setAllCardsCompleted(true)
     }
   }
 
   const handleDontKnow = () => {
     if (currentCardIndex < conceptos.length - 1) {
       nextCard()
+    } else {
+      setAllCardsCompleted(true)
     }
   }
 
@@ -108,7 +114,7 @@ export default function Tarjetas() {
           </button>
         </div>
 
-        {currentCardIndex === conceptos.length - 1 && showAnswer && (
+        {allCardsCompleted && (
           <div className="mt-8 text-center card bg-accent/30">
             <div className="text-4xl mb-4">🎉</div>
             <h3 className="text-xl font-bold mb-2">¡Felicitaciones!</h3>

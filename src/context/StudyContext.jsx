@@ -101,6 +101,22 @@ function studyReducer(state, action) {
           },
         },
       }
+    case 'UPDATE_QUIZ_PROGRESS':
+      const quizTopic = action.payload.topic
+      const quizCorrect = action.payload.correct
+      const quizTotal = action.payload.total
+      const percentage = Math.round((quizCorrect / quizTotal) * 100)
+      const existingProgress = state.topicProgress[quizTopic] || { known: 0, total: 0, quizScore: 0 }
+      return {
+        ...state,
+        topicProgress: {
+          ...state.topicProgress,
+          [quizTopic]: {
+            ...existingProgress,
+            quizScore: Math.max(existingProgress.quizScore || 0, percentage),
+          },
+        },
+      }
     default:
       return state
   }
@@ -121,6 +137,7 @@ export function StudyProvider({ children }) {
     nextQuestion: () => dispatch({ type: 'NEXT_QUESTION' }),
     resetSession: () => dispatch({ type: 'RESET_SESSION' }),
     markCardKnown: () => dispatch({ type: 'MARK_CARD_KNOWN' }),
+    updateQuizProgress: (topic, correct, total) => dispatch({ type: 'UPDATE_QUIZ_PROGRESS', payload: { topic, correct, total } }),
   }
 
   return <StudyContext.Provider value={value}>{children}</StudyContext.Provider>

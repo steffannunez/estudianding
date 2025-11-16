@@ -30,7 +30,15 @@ export default function Home() {
   const getTopicProgress = (topic) => {
     const progress = topicProgress[topic]
     if (!progress) return 0
-    return Math.round((progress.known / Math.max(progress.total, 1)) * 100)
+    const cardProgress = Math.round((progress.known / Math.max(progress.total, 1)) * 100)
+    const quizProgress = progress.quizScore || 0
+    console.log('Card Progress:', cardProgress, 'Quiz Progress:', quizProgress)
+    return Math.max(cardProgress, quizProgress)
+  }
+
+  const getTopicQuizScore = (topic) => {
+    const progress = topicProgress[topic]
+    return progress?.quizScore || 0
   }
 
   return (
@@ -65,6 +73,9 @@ export default function Home() {
                   />
                 </div>
                 <p className="text-sm text-gray-500">Progreso: {getTopicProgress(topic)}%</p>
+                {getTopicQuizScore(topic) > 0 && (
+                  <p className="text-xs text-primary mt-1">Quiz: {getTopicQuizScore(topic)}%</p>
+                )}
               </button>
             ))}
           </div>

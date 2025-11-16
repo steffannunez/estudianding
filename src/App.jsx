@@ -3,6 +3,7 @@ import Home from './components/Home'
 import ModoEstudio from './components/ModoEstudio'
 import Tarjetas from './components/Tarjetas'
 import Preguntas from './components/Preguntas'
+import ErrorBoundary from './components/ErrorBoundary'
 
 function App() {
   const { state } = useStudy()
@@ -22,7 +23,11 @@ function App() {
     }
   }
 
-  return <div className="font-sans">{renderCurrentMode()}</div>
+  return (
+    <ErrorBoundary>
+      <div className="font-sans">{renderCurrentMode()}</div>
+    </ErrorBoundary>
+  )
 }
 
 export default App

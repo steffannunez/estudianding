@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import { useState } from  'react'
 import { useStudy } from '../context/StudyContext'
 
 export default function Preguntas() {
-  const { state, setMode, answerQuestion, nextQuestion, resetSession } = useStudy()
+  const { state, setMode, answerQuestion, nextQuestion, resetSession, updateQuizProgress } = useStudy()
   const { currentTopic, knowledgeBase, currentQuestionIndex, score } = state
   const [selectedAnswer, setSelectedAnswer] = useState(null)
   const [answered, setAnswered] = useState(false)
   const [quizCorrectAnswers, setQuizCorrectAnswers] = useState(0)
   const [quizScore, setQuizScore] = useState(0)
+  const [quizCompleted, setQuizCompleted] = useState(false)
 
   if (!currentTopic) {
     return <div>No hay tema seleccionado</div>
@@ -31,9 +32,13 @@ export default function Preguntas() {
     setAnswered(true)
     const isAnswerCorrect = optionIndex === currentQuestion.respuesta
     answerQuestion(isAnswerCorrect)
+    const newCorrectCount = isAnswerCorrect ? quizCorrectAnswers + 1 : quizCorrectAnswers
     if (isAnswerCorrect) {
-      setQuizCorrectAnswers(prev => prev + 1)
+      setQuizCorrectAnswers(newCorrectCount)
       setQuizScore(prev => prev + 10)
+    }
+    if (isLastQuestion) {
+      updateQuizProgress(currentTopic, newCorrectCount, preguntas.length)
     }
   }
 
@@ -167,3 +172,4 @@ export default function Preguntas() {
     </div>
   )
 }
+// Forced reload
