@@ -4,7 +4,7 @@ import { useStudy } from '../context/StudyContext'
 export default function Preguntas() {
   const { state, setMode, answerQuestion, nextQuestion, resetSession, updateQuizProgress } = useStudy()
   const { currentTopic, knowledgeBase, currentQuestionIndex, score } = state
-  const [selectedAnswer, setSelectedAnswer] = useState(null)
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [answered, setAnswered] = useState(false)
   const [quizCorrectAnswers, setQuizCorrectAnswers] = useState(0)
   const [quizScore, setQuizScore] = useState(0)
@@ -25,7 +25,7 @@ export default function Preguntas() {
   const isLastQuestion = currentQuestionIndex === preguntas.length - 1
   const isCorrect = selectedAnswer === currentQuestion.respuesta
 
-  const handleAnswer = (optionIndex) => {
+  const handleAnswer = (optionIndex: number) => {
     if (answered) return
     setSelectedAnswer(optionIndex)
     setAnswered(true)
@@ -57,7 +57,7 @@ export default function Preguntas() {
     setQuizScore(0)
   }
 
-  const getOptionStyle = (index) => {
+  const getOptionStyle = (index: number): string => {
     if (!answered) {
       return 'bg-white hover:bg-gray-50 border-2 border-gray-200'
     }
