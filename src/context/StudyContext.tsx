@@ -1,14 +1,15 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useReducer } from 'react'
+import { createContext, useContext, useReducer, type ReactNode } from 'react'
 import knowledgeData from '../data/knowledge.json'
+import type { StudyState, StudyAction, StudyContextValue, KnowledgeBase } from '../types'
 
-const StudyContext = createContext(null)
+const StudyContext = createContext<StudyContextValue | null>(null)
 
-const initialState = {
+const initialState: StudyState = {
   currentTopic: null,
   currentMode: 'home',
   topics: Object.keys(knowledgeData),
-  knowledgeBase: knowledgeData,
+  knowledgeBase: knowledgeData as KnowledgeBase,
   score: 0,
   totalQuestions: 0,
   correctAnswers: 0,
@@ -18,7 +19,7 @@ const initialState = {
   showAnswer: false,
 }
 
-function studyReducer(state, action) {
+function studyReducer(state: StudyState, action: StudyAction): StudyState {
   switch (action.type) {
     case 'SET_TOPIC':
       return {
@@ -37,7 +38,7 @@ function studyReducer(state, action) {
         showAnswer: false,
       }
     case 'NEXT_CARD': {
-      const topicData = state.knowledgeBase[state.currentTopic]
+      const topicData = state.currentTopic ? state.knowledgeBase[state.currentTopic] : null
       const maxCards = topicData ? topicData.conceptos.length : 0
       return {
         ...state,
@@ -68,7 +69,7 @@ function studyReducer(state, action) {
       }
     }
     case 'NEXT_QUESTION': {
-      const questionsData = state.knowledgeBase[state.currentTopic]
+      const questionsData = state.currentTopic ? state.knowledgeBase[state.currentTopic] : null
       const maxQuestions = questionsData ? questionsData.preguntas.length : 0
       return {
         ...state,
@@ -94,14 +95,15 @@ function studyReducer(state, action) {
       }
     case 'MARK_CARD_KNOWN': {
       const topic = state.currentTopic
+      if (!topic) return state
       const currentProgress = state.topicProgress[topic] || { known: 0, total: 0 }
       return {
         ...state,
         topicProgress: {
           ...state.topicProgress,
           [topic]: {
-            known: currentProgress.known + 1,
-            total: Math.max(currentProgress.total, state.currentCardIndex + 1),
+            known: currentProgress.known! + 1,
+            total: Math.max(currentProgress.total || 0, state.currentCardIndex + 1),
           },
         },
       }
@@ -128,10 +130,10 @@ function studyReducer(state, action) {
   }
 }
 
-export function StudyProvider({ children }) {
+export function StudyProvider({ children }: { children: ReactNode }) {
   const [state, dispatch] = useReducer(studyReducer, initialState)
 
-  const value = {
+  const value: StudyContextValue = {
     state,
     dispatch,
     setTopic: (topic) => dispatch({ type: 'SET_TOPIC', payload: topic }),
@@ -149,7 +151,7 @@ export function StudyProvider({ children }) {
   return <StudyContext.Provider value={value}>{children}</StudyContext.Provider>
 }
 
-export function useStudy() {
+export function useStudy(): StudyContextValue {
   const context = useContext(StudyContext)
   if (!context) {
     throw new Error('useStudy must be used within a StudyProvider')

@@ -1,10 +1,13 @@
 import { useStudy } from '../context/StudyContext'
 
+type ModeType = 'home' | 'study' | 'cards' | 'quiz'
+type TopicNames = Record<string, string>
+
 export default function Home() {
   const { state, setTopic, setMode } = useStudy()
   const { topics, currentTopic, score, topicProgress } = state
 
-  const handleModeSelect = (mode) => {
+  const handleModeSelect = (mode: ModeType) => {
     if (!currentTopic) {
       alert('Por favor, selecciona un tema primero')
       return
@@ -12,8 +15,8 @@ export default function Home() {
     setMode(mode)
   }
 
-  const getTopicDisplayName = (topic) => {
-    const names = {
+  const getTopicDisplayName = (topic: string): string => {
+    const names: TopicNames = {
       microservicios: 'Microservicios',
       aws: 'AWS Cloud',
       typescript: 'TypeScript',
@@ -28,16 +31,16 @@ export default function Home() {
     return names[topic] || topic
   }
 
-  const getTopicProgress = (topic) => {
+  const getTopicProgress = (topic: string): number => {
     const progress = topicProgress[topic]
     if (!progress) return 0
-    const cardProgress = Math.round((progress.known / Math.max(progress.total, 1)) * 100)
+    const cardProgress = Math.round(((progress.known || 0) / Math.max(progress.total || 1, 1)) * 100)
     const quizProgress = progress.quizScore || 0
     console.log('Card Progress:', cardProgress, 'Quiz Progress:', quizProgress)
     return Math.max(cardProgress, quizProgress)
   }
 
-  const getTopicQuizScore = (topic) => {
+  const getTopicQuizScore = (topic: string): number => {
     const progress = topicProgress[topic]
     return progress?.quizScore || 0
   }

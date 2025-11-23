@@ -1,5 +1,13 @@
 import { useStudy } from '../context/StudyContext'
 
+interface TopicSummary {
+  title: string
+  description: string
+  icon: string
+}
+
+type TopicSummaries = Record<string, TopicSummary>
+
 export default function ModoEstudio() {
   const { state, setMode } = useStudy()
   const { currentTopic, knowledgeBase } = state
@@ -11,8 +19,8 @@ export default function ModoEstudio() {
   const topicData = knowledgeBase[currentTopic]
   const conceptos = topicData?.conceptos || []
 
-  const getTopicSummary = (topic) => {
-    const summaries = {
+  const getTopicSummary = (topic: string): TopicSummary => {
+    const summaries: TopicSummaries = {
       microservicios: {
         title: 'Microservicios',
         description: 'Arquitectura de software que estructura una aplicación como una colección de servicios pequeños, independientes y desplegables de forma autónoma. Cada servicio se centra en una capacidad de negocio específica y se comunica mediante APIs ligeras.',
@@ -69,7 +77,7 @@ export default function ModoEstudio() {
 
   const topicSummary = getTopicSummary(currentTopic)
 
-  const highlightKeywords = (text) => {
+  const highlightKeywords = (text: string): string => {
     const keywords = ['arquitectura', 'microservicios', 'API', 'servicio', 'patrón', 'escalabilidad', 'TypeScript', 'AWS', 'Lambda', 'DynamoDB', 'S3', 'Kubernetes']
     let highlightedText = text
     keywords.forEach(keyword => {
