@@ -1,8 +1,35 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useReducer } from 'react'
+import { createContext, useContext, useReducer, useEffect } from 'react'
 import knowledgeData from '../data/knowledge.json'
 
 const StudyContext = createContext(null)
+
+const BADGES = {
+  first_card: { name: 'Primera Tarjeta', description: 'Marca tu primera tarjeta como conocida', icon: '🃏' },
+  card_master: { name: 'Maestro de Tarjetas', description: '50 tarjetas conocidas', icon: '🎴' },
+  quiz_ace: { name: 'Quiz Perfecto', description: '100% en un quiz', icon: '🏆' },
+  streak_3: { name: 'Racha de 3', description: '3 dias seguidos', icon: '🔥' },
+  streak_7: { name: 'Semana Completa', description: '7 dias seguidos', icon: '💎' },
+  level_5: { name: 'Nivel 5', description: 'Alcanza el nivel 5', icon: '⭐' },
+  level_10: { name: 'Nivel 10', description: 'Alcanza el nivel 10', icon: '🌟' },
+  all_topics: { name: 'Explorador', description: 'Estudia los 10 temas', icon: '🗺️' },
+}
+
+const loadGamification = () => {
+  try {
+    const saved = localStorage.getItem('ravenai_gamification')
+    if (saved) return JSON.parse(saved)
+  } catch { /* ignore */ }
+  return null
+}
+
+const loadDarkMode = () => {
+  try {
+    return localStorage.getItem('ravenai_dark_mode') === 'true'
+  } catch { return false }
+}
+
+const savedGamification = loadGamification()
 
 const initialState = {
   currentTopic: null,
@@ -16,6 +43,14 @@ const initialState = {
   currentCardIndex: 0,
   currentQuestionIndex: 0,
   showAnswer: false,
+  xp: savedGamification?.xp || 0,
+  level: savedGamification?.level || 1,
+  streak: savedGamification?.streak || 0,
+  lastStudyDate: savedGamification?.lastStudyDate || null,
+  badges: savedGamification?.badges || [],
+  xpHistory: [],
+  totalCardsKnown: savedGamification?.totalCardsKnown || 0,
+  darkMode: loadDarkMode(),
 }
 
 function studyReducer(state, action) {
@@ -52,19 +87,14 @@ function studyReducer(state, action) {
         showAnswer: false,
       }
     case 'TOGGLE_ANSWER':
-      return {
-        ...state,
-        showAnswer: !state.showAnswer,
-      }
+      return { ...state, showAnswer: !state.showAnswer }
     case 'ANSWER_QUESTION': {
       const isCorrect = action.payload.isCorrect
-      const newScore = isCorrect ? state.score + 10 : state.score
-      const newCorrect = isCorrect ? state.correctAnswers + 1 : state.correctAnswers
       return {
         ...state,
-        score: newScore,
+        score: isCorrect ? state.score + 10 : state.score,
         totalQuestions: state.totalQuestions + 1,
-        correctAnswers: newCorrect,
+        correctAnswers: isCorrect ? state.correctAnswers + 1 : state.correctAnswers,
       }
     }
     case 'NEXT_QUESTION': {
@@ -97,6 +127,7 @@ function studyReducer(state, action) {
       const currentProgress = state.topicProgress[topic] || { known: 0, total: 0 }
       return {
         ...state,
+        totalCardsKnown: state.totalCardsKnown + 1,
         topicProgress: {
           ...state.topicProgress,
           [topic]: {
@@ -123,17 +154,66 @@ function studyReducer(state, action) {
         },
       }
     }
+    case 'ADD_XP': {
+      const newXp = state.xp + action.payload.amount
+      const newLevel = Math.floor(newXp / 100) + 1
+      return {
+        ...state,
+        xp: newXp,
+        level: newLevel,
+        xpHistory: [...state.xpHistory, {
+          id: Date.now(),
+          amount: action.payload.amount,
+          reason: action.payload.reason,
+        }],
+      }
+    }
+    case 'CLEAR_XP_EVENT':
+      return { ...state, xpHistory: state.xpHistory.filter(e => e.id !== action.payload) }
+    case 'UPDATE_STREAK': {
+      const today = new Date().toISOString().split('T')[0]
+      if (state.lastStudyDate === today) return state
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
+      const newStreak = state.lastStudyDate === yesterday ? state.streak + 1 : 1
+      return { ...state, streak: newStreak, lastStudyDate: today }
+    }
+    case 'EARN_BADGE': {
+      if (state.badges.includes(action.payload)) return state
+      return { ...state, badges: [...state.badges, action.payload] }
+    }
+    case 'TOGGLE_DARK_MODE':
+      return { ...state, darkMode: !state.darkMode }
     default:
       return state
   }
 }
 
+export { BADGES }
+
 export function StudyProvider({ children }) {
   const [state, dispatch] = useReducer(studyReducer, initialState)
+
+  useEffect(() => {
+    const data = {
+      xp: state.xp,
+      level: state.level,
+      streak: state.streak,
+      lastStudyDate: state.lastStudyDate,
+      badges: state.badges,
+      totalCardsKnown: state.totalCardsKnown,
+    }
+    localStorage.setItem('ravenai_gamification', JSON.stringify(data))
+  }, [state.xp, state.level, state.streak, state.lastStudyDate, state.badges, state.totalCardsKnown])
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', state.darkMode)
+    localStorage.setItem('ravenai_dark_mode', String(state.darkMode))
+  }, [state.darkMode])
 
   const value = {
     state,
     dispatch,
+    BADGES,
     setTopic: (topic) => dispatch({ type: 'SET_TOPIC', payload: topic }),
     setMode: (mode) => dispatch({ type: 'SET_MODE', payload: mode }),
     nextCard: () => dispatch({ type: 'NEXT_CARD' }),
@@ -144,6 +224,11 @@ export function StudyProvider({ children }) {
     resetSession: () => dispatch({ type: 'RESET_SESSION' }),
     markCardKnown: () => dispatch({ type: 'MARK_CARD_KNOWN' }),
     updateQuizProgress: (topic, correct, total) => dispatch({ type: 'UPDATE_QUIZ_PROGRESS', payload: { topic, correct, total } }),
+    addXp: (amount, reason) => dispatch({ type: 'ADD_XP', payload: { amount, reason } }),
+    clearXpEvent: (id) => dispatch({ type: 'CLEAR_XP_EVENT', payload: id }),
+    updateStreak: () => dispatch({ type: 'UPDATE_STREAK' }),
+    earnBadge: (badgeId) => dispatch({ type: 'EARN_BADGE', payload: badgeId }),
+    toggleDarkMode: () => dispatch({ type: 'TOGGLE_DARK_MODE' }),
   }
 
   return <StudyContext.Provider value={value}>{children}</StudyContext.Provider>

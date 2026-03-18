@@ -1,13 +1,27 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStudy } from '../context/StudyContext'
+import XpPopup from './XpPopup'
 
 export default function Tarjetas() {
-  const { state, setMode, nextCard, prevCard, toggleAnswer, markCardKnown } = useStudy()
-  const { currentTopic, knowledgeBase, currentCardIndex, showAnswer } = state
+  const navigate = useNavigate()
+  const { state, nextCard, prevCard, toggleAnswer, markCardKnown, addXp, clearXpEvent, updateStreak, earnBadge } = useStudy()
+  const { currentTopic, knowledgeBase, currentCardIndex, showAnswer, xpHistory, totalCardsKnown } = state
   const [allCardsCompleted, setAllCardsCompleted] = useState(false)
 
+  useEffect(() => {
+    updateStreak()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!currentTopic) {
-    return <div>No hay tema seleccionado</div>
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="glass-heavy p-8 text-center">
+          <p style={{ color: 'var(--text-muted)' }}>No hay tema seleccionado</p>
+          <button onClick={() => navigate('/app')} className="btn-primary-glass mt-4">Volver</button>
+        </div>
+      </div>
+    )
   }
 
   const topicData = knowledgeBase[currentTopic]
@@ -15,13 +29,24 @@ export default function Tarjetas() {
   const currentConcept = conceptos[currentCardIndex]
 
   if (!currentConcept) {
-    return <div>No hay tarjetas disponibles</div>
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="glass-heavy p-8 text-center">
+          <p style={{ color: 'var(--text-muted)' }}>No hay tarjetas disponibles</p>
+        </div>
+      </div>
+    )
   }
 
   const progress = ((currentCardIndex + 1) / conceptos.length) * 100
 
   const handleKnow = () => {
     markCardKnown()
+    addXp(5, 'card_known')
+    // Badge checks
+    if (totalCardsKnown === 0) earnBadge('first_card')
+    if (totalCardsKnown + 1 >= 50) earnBadge('card_master')
+
     if (currentCardIndex < conceptos.length - 1) {
       nextCard()
     } else {
@@ -38,49 +63,62 @@ export default function Tarjetas() {
   }
 
   return (
-    <div className="min-h-screen bg-neutral p-8">
+    <div className="px-4 md:px-8 py-8">
       <div className="max-w-2xl mx-auto">
+        {/* XP Popups */}
+        {xpHistory.map(event => (
+          <XpPopup key={event.id} amount={event.amount} onDone={() => clearXpEvent(event.id)} />
+        ))}
+
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Tarjetas de Memoria</h1>
-          <button onClick={() => setMode('home')} className="btn-coral">
+          <h1 className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>
+            Tarjetas de Memoria
+          </h1>
+          <button onClick={() => navigate('/app')} className="btn-glass text-sm">
             Volver
           </button>
         </div>
 
+        {/* Progress */}
         <div className="mb-6">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
+          <div className="flex justify-between text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
             <span>Progreso</span>
             <span>{currentCardIndex + 1} / {conceptos.length}</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div
-              className="bg-secondary h-3 rounded-full transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
+          <div className="progress-bar-glass">
+            <div className="progress-bar-fill" style={{ width: `${progress}%` }} />
           </div>
         </div>
 
-        <div
-          onClick={toggleAnswer}
-          className="flip-card min-h-[300px] cursor-pointer"
-        >
+        {/* Flip card */}
+        <div onClick={toggleAnswer} className="flip-card min-h-[320px] cursor-pointer animate-scale-in">
           <div className={`flip-card-inner ${showAnswer ? 'flipped' : ''}`}>
-            <div className="flip-card-front card min-h-[300px] flex items-center justify-center hover:shadow-xl">
+            {/* Front */}
+            <div className="flip-card-front glass-heavy min-h-[320px] flex items-center justify-center p-6">
               <div className="text-center">
-                <div className="text-4xl mb-4">🎴</div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-4">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center"
+                  style={{ background: 'linear-gradient(135deg, #1e3a5f, #2f74c0)' }}>
+                  <span className="text-2xl text-white">?</span>
+                </div>
+                <h3 className="text-xl md:text-2xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
                   {currentConcept.titulo}
                 </h3>
-                <p className="text-gray-500 text-sm">Haz clic para ver la respuesta</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Toca para ver la respuesta</p>
               </div>
             </div>
-            <div className="flip-card-back card min-h-[300px] flex items-center justify-center hover:shadow-xl">
-              <div className="text-center px-4">
-                <div className="text-4xl mb-4">💡</div>
-                <h3 className="text-xl font-semibold text-gray-800 mb-4">
+            {/* Back */}
+            <div className="flip-card-back glass-heavy min-h-[320px] flex items-center justify-center p-6"
+              style={{ borderColor: 'rgba(34, 211, 238, 0.3)' }}>
+              <div className="text-center px-2">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full flex items-center justify-center"
+                  style={{ background: 'linear-gradient(135deg, #06b6d4, #22d3ee)' }}>
+                  <span className="text-xl text-white">💡</span>
+                </div>
+                <h3 className="text-lg font-semibold mb-3 text-cyan-400">
                   {currentConcept.titulo}
                 </h3>
-                <p className="text-gray-700 leading-relaxed">
+                <p className="text-sm leading-relaxed" style={{ color: 'var(--text-muted)' }}>
                   {currentConcept.texto}
                 </p>
               </div>
@@ -88,44 +126,43 @@ export default function Tarjetas() {
           </div>
         </div>
 
-        <div className="mt-8 flex justify-center gap-4">
+        {/* Controls */}
+        <div className="mt-8 flex justify-center gap-3 flex-wrap">
           <button
-            onClick={prevCard}
+            onClick={(e) => { e.stopPropagation(); prevCard() }}
             disabled={currentCardIndex === 0}
-            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-glass"
           >
             Anterior
           </button>
-          
+
           {showAnswer && (
             <>
-              <button onClick={handleDontKnow} className="btn-coral">
-                No lo sé
+              <button onClick={handleDontKnow} className="btn-danger-glass">
+                No lo se
               </button>
-              <button onClick={handleKnow} className="btn-secondary">
-                Lo sé
+              <button onClick={handleKnow} className="btn-success-glass">
+                Lo se
               </button>
             </>
           )}
 
           <button
-            onClick={nextCard}
+            onClick={(e) => { e.stopPropagation(); nextCard() }}
             disabled={currentCardIndex === conceptos.length - 1}
-            className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            className="btn-glass"
           >
             Siguiente
           </button>
         </div>
 
+        {/* Completion */}
         {allCardsCompleted && (
-          <div className="mt-8 text-center card bg-accent/30">
-            <div className="text-4xl mb-4">🎉</div>
-            <h3 className="text-xl font-bold mb-2">¡Felicitaciones!</h3>
-            <p className="text-gray-700">Has completado todas las tarjetas</p>
-            <button
-              onClick={() => setMode('quiz')}
-              className="btn-secondary mt-4"
-            >
+          <div className="mt-8 glass-heavy p-8 text-center animate-bounce-in" style={{ boxShadow: '0 0 30px rgba(34, 211, 238, 0.3)' }}>
+            <div className="text-5xl mb-4">🎉</div>
+            <h3 className="text-xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Felicitaciones!</h3>
+            <p className="mb-4" style={{ color: 'var(--text-muted)' }}>Has completado todas las tarjetas</p>
+            <button onClick={() => navigate('/app/quiz')} className="btn-accent-glass">
               Continuar con el Quiz
             </button>
           </div>

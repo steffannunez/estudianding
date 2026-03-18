@@ -1,0 +1,19 @@
+export default function RavenLogo({ size = 40, className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 64 64"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+    >
+      <path
+        d="M20 44c-3-2-5-6-5-10 0-4 2-7 5-9 2-2 4-3 5-5 1-3 3-5 6-6 3-2 6-2 9-1l3 2c2-1 4-1 6 0 2 1 3 3 4 5l2 2c2 1 3 3 3 6s-2 5-4 6l-4 2c-1 2-3 4-5 5-3 2-6 3-9 3H20z"
+        fill="currentColor"
+      />
+      <circle cx="43" cy="24" r="2.5" fill="#22d3ee" />
+      <path d="M50 25l7-3-5 5z" fill="currentColor" />
+    </svg>
+  )
+}

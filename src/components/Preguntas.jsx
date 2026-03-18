@@ -1,16 +1,30 @@
-import { useState } from  'react'
+import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useStudy } from '../context/StudyContext'
+import XpPopup from './XpPopup'
 
 export default function Preguntas() {
-  const { state, setMode, answerQuestion, nextQuestion, resetSession, updateQuizProgress } = useStudy()
-  const { currentTopic, knowledgeBase, currentQuestionIndex, score } = state
+  const navigate = useNavigate()
+  const { state, answerQuestion, nextQuestion, resetSession, updateQuizProgress, addXp, clearXpEvent, updateStreak, earnBadge } = useStudy()
+  const { currentTopic, knowledgeBase, currentQuestionIndex, score, xpHistory } = state
   const [selectedAnswer, setSelectedAnswer] = useState(null)
   const [answered, setAnswered] = useState(false)
   const [quizCorrectAnswers, setQuizCorrectAnswers] = useState(0)
   const [quizScore, setQuizScore] = useState(0)
 
+  useEffect(() => {
+    updateStreak()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   if (!currentTopic) {
-    return <div>No hay tema seleccionado</div>
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="glass-heavy p-8 text-center">
+          <p style={{ color: 'var(--text-muted)' }}>No hay tema seleccionado</p>
+          <button onClick={() => navigate('/app')} className="btn-primary-glass mt-4">Volver</button>
+        </div>
+      </div>
+    )
   }
 
   const topicData = knowledgeBase[currentTopic]
@@ -18,7 +32,13 @@ export default function Preguntas() {
   const currentQuestion = preguntas[currentQuestionIndex]
 
   if (!currentQuestion) {
-    return <div>No hay preguntas disponibles</div>
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="glass-heavy p-8 text-center">
+          <p style={{ color: 'var(--text-muted)' }}>No hay preguntas disponibles</p>
+        </div>
+      </div>
+    )
   }
 
   const progress = ((currentQuestionIndex + 1) / preguntas.length) * 100
@@ -35,9 +55,12 @@ export default function Preguntas() {
     if (isAnswerCorrect) {
       setQuizCorrectAnswers(newCorrectCount)
       setQuizScore(prev => prev + 10)
+      addXp(10, 'quiz_correct')
     }
     if (isLastQuestion) {
       updateQuizProgress(currentTopic, newCorrectCount, preguntas.length)
+      // Badge checks
+      if (newCorrectCount === preguntas.length) earnBadge('quiz_ace')
     }
   }
 
@@ -57,70 +80,81 @@ export default function Preguntas() {
     setQuizScore(0)
   }
 
-  const getOptionStyle = (index) => {
-    if (!answered) {
-      return 'bg-white hover:bg-gray-50 border-2 border-gray-200'
-    }
-    if (index === currentQuestion.respuesta) {
-      return 'bg-secondary/30 border-2 border-secondary'
-    }
-    if (index === selectedAnswer && index !== currentQuestion.respuesta) {
-      return 'bg-coral/30 border-2 border-coral'
-    }
-    return 'bg-white border-2 border-gray-200 opacity-50'
+  const getOptionClass = (index) => {
+    if (!answered) return 'quiz-option'
+    if (index === currentQuestion.respuesta) return 'quiz-option correct'
+    if (index === selectedAnswer && index !== currentQuestion.respuesta) return 'quiz-option incorrect'
+    return 'quiz-option faded'
   }
 
   return (
-    <div className="min-h-screen bg-neutral p-8">
+    <div className="px-4 md:px-8 py-8">
       <div className="max-w-2xl mx-auto">
+        {/* XP Popups */}
+        {xpHistory.map(event => (
+          <XpPopup key={event.id} amount={event.amount} onDone={() => clearXpEvent(event.id)} />
+        ))}
+
+        {/* Header */}
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold">Quiz</h1>
-          <div className="flex items-center gap-4">
-            <div className="bg-accent px-4 py-2 rounded-full">
-              <span className="font-semibold">Puntos: {score}</span>
-            </div>
-            <button onClick={() => setMode('home')} className="btn-coral">
+          <h1 className="text-2xl md:text-3xl font-bold" style={{ color: 'var(--text-primary)' }}>Quiz</h1>
+          <div className="flex items-center gap-3">
+            <span className="glass px-4 py-2 text-sm font-semibold" style={{ borderRadius: '9999px', color: 'var(--text-primary)' }}>
+              {score} pts
+            </span>
+            <button onClick={() => navigate('/app')} className="btn-glass text-sm">
               Volver
             </button>
           </div>
         </div>
 
+        {/* Progress */}
         <div className="mb-6">
-          <div className="flex justify-between text-sm text-gray-600 mb-2">
+          <div className="flex justify-between text-sm mb-2" style={{ color: 'var(--text-muted)' }}>
             <span>Pregunta {currentQuestionIndex + 1} de {preguntas.length}</span>
             <span>{quizCorrectAnswers}/{currentQuestionIndex + (answered ? 1 : 0)} correctas</span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-3">
-            <div
-              className="bg-primary h-3 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min(progress, 100)}%` }}
-            />
+          <div className="progress-bar-glass">
+            <div className="progress-bar-fill" style={{ width: `${Math.min(progress, 100)}%` }} />
           </div>
         </div>
 
-        <div className="card mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 mb-6">
+        {/* Question card */}
+        <div className="glass-heavy p-6 mb-6 animate-scale-in">
+          <h2 className="text-lg font-semibold mb-6" style={{ color: 'var(--text-primary)' }}>
             {currentQuestion.pregunta}
           </h2>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {currentQuestion.opciones.map((opcion, index) => (
               <button
                 key={index}
                 onClick={() => handleAnswer(index)}
                 disabled={answered}
-                className={`w-full text-left p-4 rounded-xl transition-all duration-300 ${getOptionStyle(index)} ${!answered ? 'cursor-pointer' : 'cursor-default'}`}
+                className={getOptionClass(index)}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center font-semibold">
+                  <div
+                    className="w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm flex-shrink-0"
+                    style={{
+                      background: answered && index === currentQuestion.respuesta
+                        ? 'linear-gradient(135deg, #059669, #10b981)'
+                        : answered && index === selectedAnswer && index !== currentQuestion.respuesta
+                        ? 'linear-gradient(135deg, #dc2626, #ef4444)'
+                        : 'var(--glass-bg)',
+                      color: answered && (index === currentQuestion.respuesta || index === selectedAnswer)
+                        ? '#fff'
+                        : 'var(--text-primary)',
+                    }}
+                  >
                     {String.fromCharCode(65 + index)}
                   </div>
-                  <span>{opcion}</span>
+                  <span className="flex-1">{opcion}</span>
                   {answered && index === currentQuestion.respuesta && (
-                    <span className="ml-auto text-2xl">✓</span>
+                    <span className="text-emerald-400 text-xl">✓</span>
                   )}
                   {answered && index === selectedAnswer && index !== currentQuestion.respuesta && (
-                    <span className="ml-auto text-2xl">✗</span>
+                    <span className="text-red-400 text-xl">✗</span>
                   )}
                 </div>
               </button>
@@ -128,40 +162,46 @@ export default function Preguntas() {
           </div>
         </div>
 
+        {/* Feedback */}
         {answered && (
-          <div className={`card mb-6 ${isCorrect ? 'bg-secondary/20' : 'bg-coral/20'}`}>
-            <div className="text-center">
-              <div className="text-4xl mb-2">{isCorrect ? '🎉' : '😅'}</div>
-              <p className="font-semibold">
-                {isCorrect ? '¡Correcto! +10 puntos' : 'Incorrecto'}
-              </p>
-            </div>
+          <div className={`glass p-4 mb-6 text-center animate-scale-in ${isCorrect ? '' : ''}`}
+            style={{
+              background: isCorrect ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+              borderColor: isCorrect ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)',
+            }}
+          >
+            <div className="text-3xl mb-1">{isCorrect ? '🎉' : '😅'}</div>
+            <p className="font-semibold" style={{ color: isCorrect ? '#10b981' : '#ef4444' }}>
+              {isCorrect ? 'Correcto! +10 XP' : 'Incorrecto'}
+            </p>
           </div>
         )}
 
+        {/* Next button */}
         {answered && !isLastQuestion && (
           <div className="text-center">
-            <button onClick={handleNext} className="btn-primary">
+            <button onClick={handleNext} className="btn-primary-glass">
               Siguiente Pregunta
             </button>
           </div>
         )}
 
+        {/* Quiz complete */}
         {answered && isLastQuestion && (
-          <div className="card bg-accent/30 text-center">
-            <div className="text-4xl mb-4">🏆</div>
-            <h3 className="text-2xl font-bold mb-2">¡Quiz Completado!</h3>
-            <p className="text-lg mb-2">
-              Puntuación del quiz: {quizScore} puntos
+          <div className="glass-heavy p-8 text-center animate-bounce-in" style={{ boxShadow: '0 0 30px rgba(34, 211, 238, 0.3)' }}>
+            <div className="text-5xl mb-4">🏆</div>
+            <h3 className="text-2xl font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Quiz Completado!</h3>
+            <p className="text-lg mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Puntuacion: {quizScore} puntos
             </p>
-            <p className="text-gray-700 mb-4">
+            <p className="mb-4" style={{ color: 'var(--text-muted)' }}>
               Respuestas correctas: {quizCorrectAnswers} de {preguntas.length}
             </p>
             <div className="flex justify-center gap-4">
-              <button onClick={handleRestart} className="btn-secondary">
+              <button onClick={handleRestart} className="btn-accent-glass">
                 Reintentar
               </button>
-              <button onClick={() => setMode('home')} className="btn-primary">
+              <button onClick={() => navigate('/app')} className="btn-primary-glass">
                 Volver al Inicio
               </button>
             </div>
@@ -171,4 +211,3 @@ export default function Preguntas() {
     </div>
   )
 }
-// Forced reload
